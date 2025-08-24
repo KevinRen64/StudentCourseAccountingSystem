@@ -1,0 +1,42 @@
+﻿@model IEnumerable<Uxtrata.Models.Payment>
+
+@{
+    ViewBag.Title = "Payments";
+    var balances = ViewBag.Balances as IDictionary<int, decimal>
+                   ?? new Dictionary<int, decimal>();
+}
+
+<h2>Payments</h2>
+
+<p>@Html.ActionLink("Create New", "Create")</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Student</th>
+            <th class="text-right">Amount</th>
+            <th class="text-right">Current Balance</th>
+            <th>Paid At</th>
+            <th>Reference</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            var bal = balances.TryGetValue(item.StudentId, out var b) ? b : 0m;
+            <tr>
+                <td>@(item.Student?.Name ?? "(unknown)")</td>
+                <td class="text-right">@item.Amount.ToString("C")</td>
+                <td class="text-right">@bal.ToString("C")</td>
+                <td>@item.PaidAt</td>
+                <td>@item.Reference</td>
+                <td>
+                    @Html.ActionLink("Edit", "Edit", new { id = item.PaymentId }) |
+                    @Html.ActionLink("Details", "Details", new { id = item.PaymentId }) |
+                    @Html.ActionLink("Delete", "Delete", new { id = item.PaymentId })
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

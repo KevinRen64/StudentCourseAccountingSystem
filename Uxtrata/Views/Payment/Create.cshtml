@@ -1,0 +1,85 @@
+﻿@model Uxtrata.Models.Payment
+@{
+    ViewBag.Title = "Record Payment";
+}
+<h2>Record Payment</h2>
+
+@Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+
+    <div class="form-horizontal">
+        <h4>Payment</h4>
+        <hr />
+
+        <div class="form-group">
+            @Html.LabelFor(m => m.StudentId, "Student", new { @class = "control-label col-md-2" })
+            <div class="col-md-10">
+                @* Strongly-typed binding to StudentId *@
+                @Html.DropDownListFor(m => m.StudentId, (SelectList)ViewBag.StudentId, "-- Select Student --",
+                    new { @class = "form-control", id = "StudentId" })
+                @Html.ValidationMessageFor(m => m.StudentId, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        @* Show current balance if provided by the controller *@
+        @if (ViewBag.CurrentBalance != null)
+        {
+            <div class="form-group">
+                <label class="control-label col-md-2">Current Balance</label>
+                <div class="col-md-10">
+                    <p class="form-control-static">
+                        <strong>@(((decimal)ViewBag.CurrentBalance).ToString("C"))</strong>
+                    </p>
+                </div>
+            </div>
+        }
+
+        <div class="form-group">
+            @Html.LabelFor(m => m.Amount, new { @class = "control-label col-md-2" })
+            <div class="col-md-10">
+                @Html.TextBoxFor(m => m.Amount,
+                    new { @class = "form-control", type = "number", step = "0.01", min = "0.01", placeholder = "e.g. 200.00" })
+                @Html.ValidationMessageFor(m => m.Amount, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <div class="form-group">
+            @Html.LabelFor(m => m.PaidAt, "Date", new { @class = "control-label col-md-2" })
+            <div class="col-md-10">
+                @Html.TextBoxFor(m => m.PaidAt, "{0:yyyy-MM-ddTHH:mm}", new { @class = "form-control", type = "datetime-local" })
+                @Html.ValidationMessageFor(m => m.PaidAt, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <div class="form-group">
+            @Html.LabelFor(m => m.Reference, new { @class = "control-label col-md-2" })
+            <div class="col-md-10">
+                @Html.TextBoxFor(m => m.Reference, new { @class = "form-control", placeholder = "Optional reference / note" })
+                @Html.ValidationMessageFor(m => m.Reference, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-md-offset-2 col-md-10">
+                <button type="submit" class="btn btn-success">Save Payment</button>
+                @Html.ActionLink("Cancel", "Index", null, new { @class = "btn btn-default" })
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+    <script>
+    // Optional: when student changes, reload with ?studentId= to refresh Current Balance
+    document.getElementById('StudentId')?.addEventListener('change', function(){
+        var id = this.value;
+        if (id) {
+            window.location = '@Url.Action("Create", "Payment")' + '?studentId=' + id;
+        }
+    });
+    </script>
+}

@@ -1,0 +1,65 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewBag.Title - My ASP.NET Application</title>
+    @Styles.Render("~/Content/css")
+    @Scripts.Render("~/bundles/modernizr")
+</head>
+<body>
+    <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+        <div class="container">
+            @Html.ActionLink("CourseEnrollmentApp", "Index", "Home", new { area = "" }, new { @class = "navbar-brand" })
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                @{
+                    var sidObj = System.Web.HttpContext.Current.Session["CurrentStudentId"];
+                    int? sid = sidObj as int?;
+                    int? currentId = ViewBag.CurrentStudentId ?? sid;
+                }
+
+                <ul class="navbar-nav me-auto">
+                    @*@if (currentId != null)
+                    {
+                        <li class="nav-item">
+                            @Html.ActionLink("Add Course", "Create", "CourseSelection",
+                                new { studentId = currentId }, new { @class = "nav-link" })
+                        </li>
+                        <li class="nav-item">
+                            @Html.ActionLink("Record Payment", "Create", "Payment",
+                                new { studentId = currentId }, new { @class = "nav-link" })
+                        </li>
+                        <li class="nav-item">
+                            @Html.ActionLink("Download Statement", "Statement", "Reports",
+                                new { studentId = currentId }, new { @class = "nav-link" })
+                        </li>
+                    }
+                    else
+                    {*@
+                        <li class="nav-item">@Html.ActionLink("Students", "Index", "Student", null, new { @class = "nav-link" })</li>
+                        <li class="nav-item">@Html.ActionLink("Courses", "Index", "Course", null, new { @class = "nav-link" })</li>
+                    @*}*@
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container body-content mt-3">
+        @RenderBody()
+        <hr />
+        <footer>
+            <p>&copy; @DateTime.Now.Year - My ASP.NET Application</p>
+        </footer>
+    </div>
+
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+    @RenderSection("scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,83 @@
+﻿@model Uxtrata.Models.ViewModels.StudentDashboardVm
+@{
+    ViewBag.Title = "Student Dashboard";
+}
+
+<h2>@Model.Student.Name – Dashboard</h2>
+
+<!-- Action buttons -->
+<div class="mb-4">
+    @Html.ActionLink("Add Course", "Create", "CourseSelection", null, new { @class = "btn btn-primary mr-2" })
+    @Html.ActionLink("Record Payment", "Create", "Payment", null, new { @class = "btn btn-success mr-2" })
+    @Html.ActionLink(
+        "Download Statement (PDF)",
+        "StatementPdf",           // <-- matches your controller action
+        "Student",                // <-- controller name
+        new { id = Model.Student.StudentId }, // pass current student id
+        new { @class = "btn btn-info" })
+</div>
+
+<p><strong>Current Owing:</strong> @Model.Balance.ToString("C")</p>
+
+<h3>Enrollments</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Course</th>
+            <th>Cost</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var e in Model.Enrollments)
+        {
+            <tr>
+                <td>@(e.Course?.CourseName ?? "")</td>
+                <td>@(e.Course != null ? e.Course.Cost.ToString("C") : "")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h3>Recent Payments</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Paid At</th>
+            <th>Amount</th>
+            <th>Reference</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in Model.Payments)
+        {
+            <tr>
+                <td>@p.PaidAt.ToString("dd/MM/yyyy hh:mm tt")</td>
+                <td>@p.Amount.ToString("C")</td>
+                <td>@p.Reference</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h3>Latest Ledger Entries</h3>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Debit</th>
+            <th>Credit</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var t in Model.RecentEntries)
+        {
+            <tr>
+                <td>@t.TxnDate.ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@t.Description</td>
+                <td>@t.Debit.ToString("C")</td>
+                <td>@t.Credit.ToString("C")</td>
+            </tr>
+        }
+    </tbody>
+</table>

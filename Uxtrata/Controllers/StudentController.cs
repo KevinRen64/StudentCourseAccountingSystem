@@ -1,0 +1,277 @@
+﻿using Microsoft.Reporting.WebForms;
+using System;
+using System.Collections.Generic;
+using System.Data.Entity;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Web;
+using System.Web.Mvc;
+using Uxtrata.Models;
+using Uxtrata.Models.ViewModels;
+using Uxtrata.Services;
+
+namespace Uxtrata.Controllers
+{
+    public class StudentController : Controller
+    {
+
+        private readonly SchoolContext db = new SchoolContext();
+
+        //GET: Students
+        // Fetch all students from DB and pass them to the Index view
+        public async Task<ActionResult> Index()
+        {
+            var students = await db.Students.ToListAsync();
+            return View(students);
+        }
+
+        //GET: Students/Details/5
+        // Display a single student by id
+        public async Task<ActionResult> Details(int? id)
+        {
+            if (id == null) return new HttpStatusCodeResult(System.Net.HttpStatusCode.BadRequest);
+            var student = await db.Students.FirstOrDefaultAsync(s => s.StudentId == id);
+            if (student == null) return HttpNotFound();
+            return View(student);
+        }
+
+        //GET: Students/Create
+        // Render the Create form
+        public ActionResult Create()
+        {
+            return View();
+        }
+
+        //POST: Students/Create
+        // Handle form submission for new student
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<ActionResult> Create([Bind(Include = "StudentId, Name, Age")] Student student)
+        {
+            // Re-display form if invalid
+            if (!ModelState.IsValid) return View(student);
+            db.Students.Add(student);
+            await db.SaveChangesAsync();
+            return RedirectToAction("Index");
+        }
+
+        //GET: Students/Edit/5
+        // Show form to edit existing student
+        public async Task<ActionResult> Edit(int? id)
+        {
+            if (id == null) return new HttpStatusCodeResult(System.Net.HttpStatusCode.BadRequest);
+            var student = await db.Students.FirstOrDefaultAsync(s => s.StudentId == id);
+            if (student == null) return HttpNotFound();
+            return View(student);
+        }
+
+        //POST: Students/Edit/5
+        // Save edited student to DB
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<ActionResult> Edit([Bind(Include = "StudentId, Name, Age")] Student student)
+        { 
+            if (!ModelState.IsValid) return View(student);
+
+            // Mark as modified so EF generates an UPDATE
+            db.Entry(student).State = EntityState.Modified;
+            await db.SaveChangesAsync();
+            return RedirectToAction("Index");
+        }
+
+        //GET: Students/Delete/5
+        // Confirm delete page
+        public async Task<ActionResult> Delete(int? id)
+        {
+            if (id == null) return new HttpStatusCodeResult(System.Net.HttpStatusCode.BadRequest);
+            var student = await db.Students.FirstOrDefaultAsync(s => s.StudentId == id);
+            if (student == null) return HttpNotFound();
+            return View(student);
+        }
+
+        //POST: Students/Delete/5
+        // Actually remove student after confirmation
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> DeleteConfirmed(int id)
+        {
+            var student = await db.Students
+                .Include(s => s.CourseSelections)
+                .FirstOrDefaultAsync(s => s.StudentId == id);
+
+            if (student == null) return HttpNotFound();
+
+            using (var tx = db.Database.BeginTransaction())
+            {
+                try
+                {
+                    // 1) IDs of this student's course selections
+                    var csIds = student.CourseSelections
+                                       .Select(cs => cs.CourseSelectionId)
+                                       .ToList();
+
+                    // 2) Ledger entries that reference those course selections (nullable FK safe)
+                    if (csIds.Any())
+                    {
+                        var ledgerBySelection = db.LedgerEntries
+                            .Where(le => le.CourseSelectionId.HasValue &&
+                                         csIds.Contains(le.CourseSelectionId.Value));
+                        db.LedgerEntries.RemoveRange(ledgerBySelection);
+                    }
+
+                    // 3) Ledger entries that reference the student directly
+                    var ledgerByStudent = db.LedgerEntries.Where(le => le.StudentId == id);
+                    db.LedgerEntries.RemoveRange(ledgerByStudent);
+
+                    // 4) Payments for this student (if applicable)
+                    var payments = db.Payments.Where(p => p.StudentId == id);
+                    db.Payments.RemoveRange(payments);
+
+                    // 5) Course selections for this student
+                    var selections = db.CourseSelections.Where(cs => cs.StudentId == id);
+                    db.CourseSelections.RemoveRange(selections);
+
+                    // 6) Finally delete the student
+                    db.Students.Remove(student);
+
+                    await db.SaveChangesAsync();
+                    tx.Commit();
+                }
+                catch
+                {
+                    tx.Rollback();
+                    throw;
+                }
+            }
+
+            return RedirectToAction("Index");
+        }
+
+
+
+        // GET: Students/Dashboard/5
+        public async Task<ActionResult> Dashboard(int? id)
+        {
+            if (id == null) return new HttpStatusCodeResult(400); // BadRequest
+
+            var student = await db.Students.FindAsync(id);
+            if (student == null) return HttpNotFound();
+
+            // Make navbar context-aware
+            Session["CurrentStudentId"] = student.StudentId;
+
+            var acct = new AccountingService(db);
+
+            var vm = new StudentDashboardVm
+            {
+                Student = student,
+                Balance = acct.GetStudentBalance(student.StudentId), // your AR-only logic
+                Enrollments = await db.CourseSelections
+                    .Include(s => s.Course)
+                    .Where(s => s.StudentId == student.StudentId)
+                    .ToListAsync(),
+                Payments = await db.Payments
+                    .Where(p => p.StudentId == student.StudentId)
+                    .OrderByDescending(p => p.PaidAt)
+                    .Take(10)
+                    .ToListAsync(),
+                RecentEntries = await db.LedgerEntries
+                    .Where(e => e.StudentId == student.StudentId)
+                    .OrderByDescending(e => e.TxnDate)
+                    .Take(10)
+                    .ToListAsync()
+            };
+
+            return View(vm); // will look for Views/Students/Dashboard.cshtml
+        }
+
+        //GET: /Student/StatementPdf/{id}
+        public async Task<ActionResult> StatementPdf(int id)
+        {
+            // 1. Load student with course selection
+            var student = await db.Students
+                .Include(s => s.CourseSelections.Select(cs => cs.Course))
+                .FirstOrDefaultAsync(s => s.StudentId == id);
+
+            if (student == null) return HttpNotFound();
+
+            //2. load this student's payments
+            var payments = await db.Payments
+                .Where(p => p.StudentId == student.StudentId)
+                .OrderByDescending(p => p.PaidAt)
+                .ToListAsync();
+
+            //3. build the RDLC dataset 
+            var rows = new System.Collections.Generic.List<StudentStatement>();
+
+            // Charge rows: one per enrolled course (no date in your model -> null)
+            foreach (var e in student.CourseSelections)
+            {
+                rows.Add(new StudentStatement
+                {
+                    StudentName = student.Name,    // comes from Student entity
+                    CourseName = e.Course?.CourseName ?? "Course",   // enrolled course name 
+                    CourseCost = e.Course?.Cost ?? 0m,   // course fee
+                    PaymentDate = DateTime.MinValue,   // no date for charge rows
+                    AmountPaid = 0m,     // not a payment row
+                    Balance = 0m    // will calculate later
+                });
+            }
+
+            // Payment rows: one per payment
+            foreach (var p in payments)
+            {
+                rows.Add(new StudentStatement
+                {
+                    StudentName = student.Name,
+                    CourseName = "",                  // not tied to a single course
+                    CourseCost = 0m,
+                    PaymentDate = p.PaidAt,
+                    AmountPaid = p.Amount,
+                    Balance = 0m                      // will calculate later
+                });
+            }
+
+            // 4) Sort rows then compute running balance
+            rows = rows
+                .OrderBy(r => r.PaymentDate == DateTime.MinValue ? 0 : 1) // charges (null date) first
+                .ThenBy(r => r.PaymentDate)                     // then payments by date
+                .ThenBy(r => r.CourseName)                      // stable tie-breaker
+                .ToList();
+
+            decimal running = 0m;
+            foreach (var r in rows)
+            {
+                running += r.CourseCost;  // add course charges
+                running -= r.AmountPaid;  // subtract payments
+                r.Balance = running;
+            }
+
+            // 5) Render RDLC -> PDF
+            var report = new LocalReport
+            {
+                ReportPath = Server.MapPath("~/StudentStatement.rdlc") // make sure path/file matches
+            };
+            report.DataSources.Clear();
+            report.DataSources.Add(new ReportDataSource("StudentStatementDataset", rows)); // dataset name must match RDLC
+
+            string mimeType, encoding, fileExt;
+            Warning[] warnings;
+            string[] streamIds;
+            var pdf = report.Render(
+                "PDF", null, out mimeType, out encoding, out fileExt, out streamIds, out warnings);
+
+            var fileName = $"{(student.Name ?? "Student")}-Statement.pdf";
+            return File(pdf, "application/pdf", fileName);
+
+        }
+
+        // Dispose the context when done
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                db.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
+}

@@ -1,0 +1,50 @@
+﻿@model Uxtrata.Models.CourseSelection
+
+@{
+    ViewBag.Title = "Edit";
+}
+
+<h2>Edit Course Selection</h2>
+
+@using (Html.BeginForm("Edit", "CourseSelection", FormMethod.Post, new { @class = "form-horizontal", role = "form" }))
+{
+    @Html.AntiForgeryToken()
+
+    @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+    @Html.HiddenFor(m => m.CourseSelectionId)
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.StudentId, htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.DropDownListFor(
+                m => m.StudentId,
+                (SelectList)ViewBag.StudentId,
+                "-- Select student --",
+                new { @class = "form-control" })
+            @Html.ValidationMessageFor(m => m.StudentId, "", new { @class = "text-danger" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.CourseId, htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.DropDownListFor(
+                m => m.CourseId,
+                (SelectList)ViewBag.CourseId,
+                "-- Select course --",
+                new { @class = "form-control" })
+            @Html.ValidationMessageFor(m => m.CourseId, "", new { @class = "text-danger" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-offset-2 col-md-10">
+            <input type="submit" value="Save" class="btn btn-primary" />
+            @Html.ActionLink("Back to List", "Index", null, new { @class = "btn btn-default" })
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
