@@ -7,6 +7,10 @@ using System.Web;
 
 namespace Uxtrata.Models
 {
+    /// <summary>
+    /// Represents a single transaction record in the double-entry accounting system.
+    /// Each LedgerEntry affects one Account (AR, CASH, REV) with either a Debit or Credit value.
+    /// </summary>
     public class LedgerEntry
     {
         public int Id { get; set; }

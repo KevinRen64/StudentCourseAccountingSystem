@@ -8,6 +8,10 @@ using Uxtrata.Services;
 
 namespace Uxtrata.Controllers
 {
+    /// <summary>
+    /// Manages student course enrollments (CourseSelection entities)
+    /// Note: Creating/deleting enrollemnts also creates/deletes ledger entries via AccountingService
+    /// </summary>
     public class CourseSelectionController : Controller
     {
         private readonly SchoolContext db = new SchoolContext();
@@ -26,7 +30,7 @@ namespace Uxtrata.Controllers
                 "CourseId", "CourseName", cs?.CourseId);          // bind CourseId as value, CourseName as text
         }
 
-        // Check if a student is already enrolled in a course
+        // Returns true if a duplicate enrollment exists
         // Used in Create and Edit to prevent duplicates
         private Task<bool> IsDuplicateAsync(int studentId, int courseId, int? excludeId = null) // ingnore the current record   
         {
@@ -35,13 +39,12 @@ namespace Uxtrata.Controllers
 
             // Exclude the current row when editing
             if (excludeId.HasValue) q = q.Where(x => x.CourseSelectionId != excludeId.Value);
-            return q.AnyAsync();   // true if duplicate exists
+            return q.AnyAsync();   
         }
 
 
-        // ---------- list / details ----------
         // GET: CourseSelection
-        // Show all course enrollments with related Student + Course info
+        // List all enrollments with student and course data
         public async Task<ActionResult> Index()
         {
             var selections = await db.CourseSelections
@@ -52,8 +55,9 @@ namespace Uxtrata.Controllers
             return View(selections);
         }
 
+
         // GET: CourseSelection/Details/{id}
-        // Show details for one enrollment
+        // Show one enrollment (400 if id missing, 404 if not found)
         public async Task<ActionResult> Details(int? id)
         {
             if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
@@ -68,7 +72,7 @@ namespace Uxtrata.Controllers
             return View(selection);
         }
 
-        // ---------- create ----------
+
         // GET: CourseSelection/Create
         // Show form with dropdowns for Student and Course
         public async Task<ActionResult> Create()
@@ -77,8 +81,11 @@ namespace Uxtrata.Controllers
             return View();
         }
 
+
         // POST: CourseSelection/Create
-        // Save new enrollment if not duplicate
+        // Create a new enrollment if not a duplicate
+        // Security: [ValidateAntiForgeryToken] protects against CSRF
+        // Security: Limits model binding to whitelisted fields
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<ActionResult> Create([Bind(Include = "CourseSelectionId,StudentId,CourseId,SelectionDate")] CourseSelection selection)
         {
@@ -96,18 +103,20 @@ namespace Uxtrata.Controllers
             db.CourseSelections.Add(selection);
             await db.SaveChangesAsync();
 
-            // Post invoice to ledger (DR AR, CR REV)
+
+            // Post to ledger (Debit AR, Credit REV)
             var course = await db.Courses.FindAsync(selection.CourseId);
             var acct = new AccountingService(db);
             await acct.PostEnrollmentAsync(selection.StudentId, selection.CourseId, selection.CourseSelectionId, course.Cost);
 
+            // UX: Jump to the student's dashboard after enrolling
             return RedirectToAction("Dashboard", "Student", new { id = selection.StudentId });
 
         }
 
-        // ---------- edit ----------
+
         // GET: CourseSelection/Edit/{id}
-        // Show form for editing an existing enrollment
+        // Loads the edit form for an existing enrollment; 404/400 as needed
         public async Task<ActionResult> Edit(int? id)
         {
             if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
@@ -119,15 +128,16 @@ namespace Uxtrata.Controllers
             return View(selection);
         }
 
+
         // POST: CourseSelection/Edit/{id}
-        // Update enrollment, ensuring no duplicates
+        // Save edits to an existing enrollment if not a duplicate
+        // Security: [ValidateAntiForgeryToken] protects against CSRF
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<ActionResult> Edit([Bind(Include = "CourseSelectionId,StudentId,CourseId,SelectionDate")] CourseSelection selection)
         {
             // Check for duplicate enrollment (excluding this row itself)
             if (await IsDuplicateAsync(selection.StudentId, selection.CourseId, selection.CourseSelectionId))
                 ModelState.AddModelError("", "This student is already enrolled in the selected course.");
-
 
             // If validation fails, reload dropdowns and show form again
             if (!ModelState.IsValid)
@@ -141,9 +151,9 @@ namespace Uxtrata.Controllers
             return RedirectToAction("Index");
         }
 
-        // ---------- delete ----------
+
         // GET: CourseSelection/Delete/{id}
-        // Show confirmation page
+        // Show a delete confirmation page
         public async Task<ActionResult> Delete(int? id)
         {
             if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
@@ -158,18 +168,38 @@ namespace Uxtrata.Controllers
             return View(selection);
         }
 
-        // POST: CourseSelection/Delete/5
-        // Delete confirmed
+        // POST: CourseSelection/Delete/{id}
+        // Deletes the enrollment after confirmation
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<ActionResult> DeleteConfirmed(int id)
         {
-            var selection = await db.CourseSelections.FindAsync(id);
-            if (selection == null) return HttpNotFound();
+            using (var tx = db.Database.BeginTransaction())
+            {
+                try
+                {
+                    var selection = await db.CourseSelections.FindAsync(id);
+                    if (selection == null) return HttpNotFound();
 
-            db.CourseSelections.Remove(selection);
-            await db.SaveChangesAsync();
+                    // 1) Remove ledger rows that reference this enrollment
+                    var ledger = db.LedgerEntries.Where(le => le.CourseSelectionId == id);
+                    db.LedgerEntries.RemoveRange(ledger);
+
+                    // 2) Remove the enrollment
+                    db.CourseSelections.Remove(selection);
+
+                    await db.SaveChangesAsync();
+                    tx.Commit();
+                }
+                catch
+                {
+                    tx.Rollback();
+                    throw;
+                }
+            }
+
             return RedirectToAction("Index");
         }
+
 
         // ---------- cleanup ----------
         protected override void Dispose(bool disposing)

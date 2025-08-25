@@ -12,38 +12,49 @@ using Uxtrata.Services;
 
 namespace Uxtrata.Controllers
 {
+    /// <summary>
+    /// Manages CRUD, dashboard and reporting for Student entities
+    /// NOTE: Students have related CourseSelections, Payments and LedgerEntries.
+    /// Deleting a student touches multiple tables; use an explicit transaction for atomicity.
+    /// </summary>
     public class StudentController : Controller
     {
-
         private readonly SchoolContext db = new SchoolContext();
 
-        //GET: Students
-        // Fetch all students from DB and pass them to the Index view
+
+        // GET: Students
+        // Lists all students
         public async Task<ActionResult> Index()
         {
-            var students = await db.Students.ToListAsync();
+            var students = await db.Students.AsNoTracking().ToListAsync();
             return View(students);
         }
 
-        //GET: Students/Details/5
-        // Display a single student by id
+
+        // GET: Student/Details/{id}
+        // Shows a single student by id; returns 400 if id missing, 404 if not found.
+        // Not binding to any button.
         public async Task<ActionResult> Details(int? id)
         {
             if (id == null) return new HttpStatusCodeResult(System.Net.HttpStatusCode.BadRequest);
-            var student = await db.Students.FirstOrDefaultAsync(s => s.StudentId == id);
+            var student = await db.Students.AsNoTracking().FirstOrDefaultAsync(s => s.StudentId == id);
             if (student == null) return HttpNotFound();
             return View(student);
         }
 
-        //GET: Students/Create
-        // Render the Create form
+
+        // GET: Student/Create
+        // Renders the empty Create form
         public ActionResult Create()
         {
             return View();
         }
 
-        //POST: Students/Create
-        // Handle form submission for new student
+
+        // POST: Student/Create
+        // Creates a student from posted form values.
+        // Security: [ValidateAntiForgeryToken] protects against CSRF
+        // Security: Limits model binding to whitelisted fields
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<ActionResult> Create([Bind(Include = "StudentId, Name, Age")] Student student)
         {
@@ -54,18 +65,20 @@ namespace Uxtrata.Controllers
             return RedirectToAction("Index");
         }
 
-        //GET: Students/Edit/5
+
+        //GET: Student/Edit/{id}
         // Show form to edit existing student
         public async Task<ActionResult> Edit(int? id)
         {
             if (id == null) return new HttpStatusCodeResult(System.Net.HttpStatusCode.BadRequest);
-            var student = await db.Students.FirstOrDefaultAsync(s => s.StudentId == id);
+            var student = await db.Students.AsNoTracking().FirstOrDefaultAsync(s => s.StudentId == id);
             if (student == null) return HttpNotFound();
             return View(student);
         }
 
-        //POST: Students/Edit/5
-        // Save edited student to DB
+
+        // POST: Student/Edit/{id}
+        // Saves edited fields back to DB
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<ActionResult> Edit([Bind(Include = "StudentId, Name, Age")] Student student)
         { 
@@ -77,17 +90,19 @@ namespace Uxtrata.Controllers
             return RedirectToAction("Index");
         }
 
-        //GET: Students/Delete/5
-        // Confirm delete page
+
+        // GET: Student/Delete/{id}
+        // Shows a confirmation page before deletion
         public async Task<ActionResult> Delete(int? id)
         {
             if (id == null) return new HttpStatusCodeResult(System.Net.HttpStatusCode.BadRequest);
-            var student = await db.Students.FirstOrDefaultAsync(s => s.StudentId == id);
+            var student = await db.Students.AsNoTracking().FirstOrDefaultAsync(s => s.StudentId == id);
             if (student == null) return HttpNotFound();
             return View(student);
         }
 
-        //POST: Students/Delete/5
+
+        // POST: Students/Delete/{id}
         // Actually remove student after confirmation
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
@@ -147,7 +162,8 @@ namespace Uxtrata.Controllers
 
 
 
-        // GET: Students/Dashboard/5
+        // ---------- dashboard ----------
+        // GET: Students/Dashboard/{id}
         public async Task<ActionResult> Dashboard(int? id)
         {
             if (id == null) return new HttpStatusCodeResult(400); // BadRequest
@@ -183,6 +199,8 @@ namespace Uxtrata.Controllers
             return View(vm); // will look for Views/Students/Dashboard.cshtml
         }
 
+
+        // ---------- report ----------
         //GET: /Student/StatementPdf/{id}
         public async Task<ActionResult> StatementPdf(int id)
         {

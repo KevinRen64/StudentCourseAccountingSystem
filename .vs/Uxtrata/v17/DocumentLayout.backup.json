@@ -3,8 +3,8 @@
   "WorkspaceRootPath": "C:\\Users\\renke\\source\\repos\\Uxtrata\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|c:\\users\\renke\\source\\repos\\uxtrata\\uxtrata\\controllers\\studentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|solutionrelative:uxtrata\\controllers\\studentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|c:\\users\\renke\\source\\repos\\uxtrata\\uxtrata\\services\\accountingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|solutionrelative:uxtrata\\services\\accountingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -19,14 +19,14 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "StudentController.cs",
-              "DocumentMoniker": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Controllers\\StudentController.cs",
-              "RelativeDocumentMoniker": "Uxtrata\\Controllers\\StudentController.cs",
-              "ToolTip": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Controllers\\StudentController.cs",
-              "RelativeToolTip": "Uxtrata\\Controllers\\StudentController.cs",
-              "ViewState": "AgIAAFcAAAAAAAAAAAAQwGQAAAAAAAAAAAAAAA==",
+              "Title": "AccountingService.cs",
+              "DocumentMoniker": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Services\\AccountingService.cs",
+              "RelativeDocumentMoniker": "Uxtrata\\Services\\AccountingService.cs",
+              "ToolTip": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Services\\AccountingService.cs",
+              "RelativeToolTip": "Uxtrata\\Services\\AccountingService.cs",
+              "ViewState": "AgIAAFwAAAAAAAAAAAAgwG8AAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T10:37:42.591Z",
+              "WhenOpened": "2025-08-25T07:14:37.25Z",
               "EditorCaption": ""
             }
           ]

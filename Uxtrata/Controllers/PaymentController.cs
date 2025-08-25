@@ -11,20 +11,27 @@ using Uxtrata.Services;
 
 namespace Uxtrata.Controllers
 {
+    /// <summary>
+    /// Manages student payments
+    /// Note: Creating payments also creates ledger entries via AccountingService
+    /// Note: Editing/deleting payments does NOT adjust ledger entries, as this is a simplified example
+    /// </summary>
     public class PaymentController : Controller
     {
         private readonly SchoolContext db = new SchoolContext();
 
 
         // ---------- helpers ----------
-        // Populate dropdowns for Students and Courses
-        // Called in Create/Edit GET and POST to build SelectLists for the views
+        // Populate Student dropdown for Create/Edit forms
         private async Task PopulateStudentDropDownsAsync(int? selectedId = null)
         {
             var students = await db.Students.AsNoTracking().OrderBy(s => s.Name).ToListAsync();
+
             ViewBag.StudentId = new SelectList(students, "StudentId", "Name", selectedId);
+
             if (selectedId.HasValue)
             {
+                // Display current balance for selected student
                 var acct = new AccountingService(db);
                 ViewBag.CurrentBalance = acct.GetStudentBalance(selectedId.Value);
             }
@@ -35,27 +42,29 @@ namespace Uxtrata.Controllers
         }
 
 
-        // ---------- list / details ----------
         // GET: Payment
-        // Show all course payment with related Student info
+        // List all course payment with related Student info
+        // Also computes current balance for each student with payments
         public async Task<ActionResult> Index()
         {
             var payments = await db.Payments
                                      .AsNoTracking()
-                                     .Include(cs => cs.Student)  //eager load student data
+                                     .Include(cs => cs.Student)  
                                      .ToListAsync();
+
+            // Compute balances for each student with payments
             var acct = new AccountingService(db);
             var studentIds = payments.Select(p => p.StudentId).Distinct().ToList();
             var balances = new Dictionary<int, decimal>(studentIds.Count);
             foreach (var id in studentIds)
-                balances[id] = acct.GetStudentBalance(id);  // use your helper
+                balances[id] = acct.GetStudentBalance(id);  
 
             ViewBag.Balances = balances;
             return View(payments);
         }
 
         // GET: Payment/Details/{id}
-        // Show details for one payment
+        // Show details for one payment (400 if id missing, 404 if not found)
         public async Task<ActionResult> Details(int? id)
         {
             if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
@@ -64,27 +73,29 @@ namespace Uxtrata.Controllers
                                     .AsNoTracking()
                                     .Include(cs => cs.Student)
                                     .FirstOrDefaultAsync(cs => cs.PaymentId == id);
-            if (selection == null) return HttpNotFound();
 
+            if (selection == null) return HttpNotFound();
             return View(selection);
         }
 
-        // ---------- create ----------
+
         // GET: Payment/Create
-        // Show form with dropdowns for Student
+        // Render form for creating a new payment
+        // If a student is preselected, show their current balance
         public async Task<ActionResult> Create(int? studentId = null)
         {
             await PopulateStudentDropDownsAsync(studentId);
-            // Compute current balance if a student is preselected
-            if (studentId.HasValue)
-            {
-                var acct = new AccountingService(db);                 // if you have it
-                ViewBag.CurrentBalance = acct.GetStudentBalance(studentId.Value);
-            }
-            else
-            {
-                ViewBag.CurrentBalance = null;
-            }
+
+            //// Compute current balance if a student is preselected
+            //if (studentId.HasValue)
+            //{
+            //    var acct = new AccountingService(db);                 // if you have it
+            //    ViewBag.CurrentBalance = acct.GetStudentBalance(studentId.Value);
+            //}
+            //else
+            //{
+            //    ViewBag.CurrentBalance = null;
+            //}
 
             var model = new Payment
             {
@@ -94,8 +105,9 @@ namespace Uxtrata.Controllers
             return View(model);
         }
 
+
         // POST: Payment/Create
-        // Save new enrollment if not duplicate
+        // Create a new payment
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<ActionResult> Create([Bind(Include = "PaymentId,StudentId,Amount,PaidAt,Reference")] Payment payment)
         {
@@ -107,18 +119,17 @@ namespace Uxtrata.Controllers
                 ModelState.AddModelError("Amount", "Payment must be greater than zero.");
             }
 
-            // Balance (for UX: show it when redisplaying the form)
+            // For UX, compute balance before payment so we can warn about overpayment
             decimal? balanceBefore = null;
             if (payment.StudentId > 0)
             {
-                var acct = new AccountingService(db);                 // if you have it
+                var acct = new AccountingService(db);                 
                 balanceBefore = acct.GetStudentBalance(payment.StudentId);
 
-                // Optional: warn if overpaying (allow or block — your call).
+                // Warn if payment exceeds balance
                 if (payment.Amount > balanceBefore)
                 {
                     ModelState.AddModelError("Amount", $"Warning: amount exceeds current balance ({balanceBefore.Value.ToString("C")}).");
-                    // If you'd rather BLOCK instead of warn, keep the error but also prevent saving.
                 }
             }
 
@@ -132,16 +143,16 @@ namespace Uxtrata.Controllers
             db.Payments.Add(payment);
             await db.SaveChangesAsync();
 
-            // (Optional) Post to your ledger if you implemented double-entry
+            // Post to ledger (Debit CASH, Credit AR)
             await new AccountingService(db).PostPaymentAsync(payment.StudentId, payment.Amount, null);
-            TempData["Toast"] = $"Payment of {payment.Amount.ToString("C")} recorded.";
+
             return RedirectToAction("Dashboard", "Student", new { id = payment.StudentId });
 
         }
 
-        // ---------- edit ----------
+
         // GET: Payment/Edit/{id}
-        // Show form for editing an existing enrollment
+        // Loads the edit form for an existing payment; 404/400 as needed
         public async Task<ActionResult> Edit(int? id)
         {
             if (id == null) return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
@@ -153,12 +164,13 @@ namespace Uxtrata.Controllers
             return View(payment);
         }
 
+
         // POST: Payment/Edit/{id}
-        // Update enrollment, ensuring no duplicates
+        // Saves edits to an existing payment
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<ActionResult> Edit([Bind(Include = "PaymentId,StudentId,Amount,PaidAt,Reference")] Payment payment)
         {
-            // If validation fails, reload dropdowns and show form again
+            
             if (!ModelState.IsValid)
             {
                 await PopulateStudentDropDownsAsync(payment.StudentId);
@@ -170,7 +182,7 @@ namespace Uxtrata.Controllers
             return RedirectToAction("Index");
         }
 
-        // ---------- delete ----------
+
         // GET: Payment/Delete/{id}
         // Show confirmation page
         public async Task<ActionResult> Delete(int? id)
@@ -198,6 +210,7 @@ namespace Uxtrata.Controllers
             await db.SaveChangesAsync();
             return RedirectToAction("Index");
         }
+
 
         // ---------- cleanup ----------
         protected override void Dispose(bool disposing)
