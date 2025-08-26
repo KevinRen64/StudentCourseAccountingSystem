@@ -164,22 +164,22 @@ namespace Uxtrata.Controllers
 
         // ---------- dashboard ----------
         // GET: Students/Dashboard/{id}
+        // Shows student details, balance, enrollments, payments, recent ledger entries
         public async Task<ActionResult> Dashboard(int? id)
         {
-            if (id == null) return new HttpStatusCodeResult(400); // BadRequest
+            if (id == null) return new HttpStatusCodeResult(400); 
 
             var student = await db.Students.FindAsync(id);
             if (student == null) return HttpNotFound();
 
-            // Make navbar context-aware
-            Session["CurrentStudentId"] = student.StudentId;
+            //Session["CurrentStudentId"] = student.StudentId;
 
             var acct = new AccountingService(db);
 
             var vm = new StudentDashboardVm
             {
                 Student = student,
-                Balance = acct.GetStudentBalance(student.StudentId), // your AR-only logic
+                Balance = acct.GetStudentBalance(student.StudentId),
                 Enrollments = await db.CourseSelections
                     .Include(s => s.Course)
                     .Where(s => s.StudentId == student.StudentId)
@@ -196,12 +196,13 @@ namespace Uxtrata.Controllers
                     .ToListAsync()
             };
 
-            return View(vm); // will look for Views/Students/Dashboard.cshtml
+            return View(vm);
         }
 
 
         // ---------- report ----------
-        //GET: /Student/StatementPdf/{id}
+        // GET: /Student/StatementPdf/{id}
+        // Builds a statement and render it as a PDF via RDLC
         public async Task<ActionResult> StatementPdf(int id)
         {
             // 1. Load student with course selection
@@ -218,19 +219,19 @@ namespace Uxtrata.Controllers
                 .ToListAsync();
 
             //3. build the RDLC dataset 
-            var rows = new System.Collections.Generic.List<StudentStatement>();
+            var rows = new List<StudentStatement>();
 
             // Charge rows: one per enrolled course (no date in your model -> null)
             foreach (var e in student.CourseSelections)
             {
                 rows.Add(new StudentStatement
                 {
-                    StudentName = student.Name,    // comes from Student entity
-                    CourseName = e.Course?.CourseName ?? "Course",   // enrolled course name 
-                    CourseCost = e.Course?.Cost ?? 0m,   // course fee
-                    PaymentDate = DateTime.MinValue,   // no date for charge rows
-                    AmountPaid = 0m,     // not a payment row
-                    Balance = 0m    // will calculate later
+                    StudentName = student.Name,    
+                    CourseName = e.Course?.CourseName ?? "Course",   
+                    CourseCost = e.Course?.Cost ?? 0m,  
+                    PaymentDate = null,   // no date for charge rows
+                    AmountPaid = 0m,     
+                    Balance = 0m    
                 });
             }
 
@@ -240,30 +241,31 @@ namespace Uxtrata.Controllers
                 rows.Add(new StudentStatement
                 {
                     StudentName = student.Name,
-                    CourseName = "",                  // not tied to a single course
+                    CourseName = "",                  
                     CourseCost = 0m,
                     PaymentDate = p.PaidAt,
                     AmountPaid = p.Amount,
-                    Balance = 0m                      // will calculate later
+                    Balance = 0m                      
                 });
             }
 
             // 4) Sort rows then compute running balance
             rows = rows
-                .OrderBy(r => r.PaymentDate == DateTime.MinValue ? 0 : 1) // charges (null date) first
-                .ThenBy(r => r.PaymentDate)                     // then payments by date
-                .ThenBy(r => r.CourseName)                      // stable tie-breaker
+                .OrderBy(r => r.PaymentDate == DateTime.MinValue ? 0 : 1) 
+                .ThenBy(r => r.PaymentDate)                     
+                .ThenBy(r => r.CourseName)                    
                 .ToList();
 
+            // 5) Compute running balance
             decimal running = 0m;
             foreach (var r in rows)
             {
-                running += r.CourseCost;  // add course charges
-                running -= r.AmountPaid;  // subtract payments
+                running += r.CourseCost;  // debit
+                running -= r.AmountPaid;  // credit
                 r.Balance = running;
             }
 
-            // 5) Render RDLC -> PDF
+            // 6) Render RDLC -> PDF
             var report = new LocalReport
             {
                 ReportPath = Server.MapPath("~/StudentStatement.rdlc") // make sure path/file matches
@@ -271,6 +273,7 @@ namespace Uxtrata.Controllers
             report.DataSources.Clear();
             report.DataSources.Add(new ReportDataSource("StudentStatementDataset", rows)); // dataset name must match RDLC
 
+            // 7) Produce the PDF binary
             string mimeType, encoding, fileExt;
             Warning[] warnings;
             string[] streamIds;

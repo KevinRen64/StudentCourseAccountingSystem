@@ -7,18 +7,22 @@
 
 <!-- Action buttons -->
 <div class="mb-4">
+    <!-- Navigate to course enrollment form -->
     @Html.ActionLink("Add Course", "Create", "CourseSelection", null, new { @class = "btn btn-primary mr-2" })
+    <!-- Navigate to payment -->
     @Html.ActionLink("Record Payment", "Create", "Payment", null, new { @class = "btn btn-success mr-2" })
+    <!-- Navigate to download pdf statement -->
     @Html.ActionLink(
         "Download Statement (PDF)",
-        "StatementPdf",           // <-- matches your controller action
-        "Student",                // <-- controller name
-        new { id = Model.Student.StudentId }, // pass current student id
+        "StatementPdf",
+        "Student",
+        new { id = Model.Student.StudentId },
         new { @class = "btn btn-info" })
 </div>
-
+<!-- Current balance -->
 <p><strong>Current Owing:</strong> @Model.Balance.ToString("C")</p>
 
+<!-- Enrollment table -->
 <h3>Enrollments</h3>
 <table class="table table-striped">
     <thead>
@@ -38,6 +42,7 @@
     </tbody>
 </table>
 
+<!-- Payment table -->
 <h3>Recent Payments</h3>
 <table class="table table-striped">
     <thead>
@@ -59,6 +64,7 @@
     </tbody>
 </table>
 
+<!-- Ledger table -->
 <h3>Latest Ledger Entries</h3>
 <table class="table table-bordered">
     <thead>
