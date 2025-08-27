@@ -83,35 +83,65 @@ namespace Uxtrata.Controllers
 
 
         // POST: CourseSelection/Create
-        // Create a new enrollment if not a duplicate
+        // Handles form submission for enrolling a student in a course
         // Security: [ValidateAntiForgeryToken] protects against CSRF
         // Security: Limits model binding to whitelisted fields
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<ActionResult> Create([Bind(Include = "CourseSelectionId,StudentId,CourseId,SelectionDate")] CourseSelection selection)
         {
-            // Check for duplicate enrollment
+            // 1. Prevent duplicate enrollment at the application level
             if (await IsDuplicateAsync(selection.StudentId, selection.CourseId))
                 ModelState.AddModelError("", "This student is already enrolled in the selected course.");
 
-            // If validation fails, reload dropdowns and show form again
+            // 2. If validation fails, repopulate dropdowns and show form again
             if (!ModelState.IsValid)
             {
                 await PopulateDropDownsAsync(selection);
                 return View(selection);
             }
 
-            db.CourseSelections.Add(selection);
-            await db.SaveChangesAsync();
+            // 3. Use a db transaction to ensure both enrollment and ledger posting succeed or fail together
+            using (var tx = db.Database.BeginTransaction())
+            {
+                try
+                {
+                    // ensure the selected course exists
+                    var selectedCourse = await db.Courses.FindAsync(selection.CourseId);
+                    if (selectedCourse == null)
+                    {   
+                        ModelState.AddModelError("", "Selected course does not exist.");
+                        await PopulateDropDownsAsync(selection);
+                        return View(selection);
+                    }
 
+                    // save the enrollment
+                    db.CourseSelections.Add(selection);
+                    await db.SaveChangesAsync();
 
-            // Post to ledger (Debit AR, Credit REV)
-            var course = await db.Courses.FindAsync(selection.CourseId);
-            var acct = new AccountingService(db);
-            await acct.PostEnrollmentAsync(selection.StudentId, selection.CourseId, selection.CourseSelectionId, course.Cost);
+                    // Post to Ledger (Debit AR, Credit REV)
+                    var acctount = new AccountingService(db);
+                    await acctount.PostEnrollmentAsync(
+                        selection.StudentId, 
+                        selection.CourseId, 
+                        selection.CourseSelectionId, 
+                        selectedCourse.Cost);
 
-            // UX: Jump to the student's dashboard after enrolling
-            return RedirectToAction("Dashboard", "Student", new { id = selection.StudentId });
+                    tx.Commit();
 
+                    // 4. Redirect to student’s dashboard for better UX
+                    return RedirectToAction("Dashboard", "Student", new { id = selection.StudentId });
+                }
+                catch
+                {
+
+                    tx.Rollback();
+
+                    // Show error and reload form
+                    ModelState.AddModelError("", "Failed to enroll and post ledger. No changes were saved");
+                    await PopulateDropDownsAsync(selection);
+                    return View(selection);
+                }
+            }
         }
 
 

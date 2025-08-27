@@ -202,7 +202,7 @@ namespace Uxtrata.Controllers
 
         // ---------- report ----------
         // GET: /Student/StatementPdf/{id}
-        // Builds a statement and render it as a PDF via RDLC
+        // Builds a student statement and render it as a PDF via RDLC
         public async Task<ActionResult> StatementPdf(int id)
         {
             // 1. Load student with course selection
@@ -249,14 +249,14 @@ namespace Uxtrata.Controllers
                 });
             }
 
-            // 4) Sort rows then compute running balance
+            // 4. Sort rows then compute running balance
             rows = rows
                 .OrderBy(r => r.PaymentDate == DateTime.MinValue ? 0 : 1) 
                 .ThenBy(r => r.PaymentDate)                     
                 .ThenBy(r => r.CourseName)                    
                 .ToList();
 
-            // 5) Compute running balance
+            // 5. Compute running balance
             decimal running = 0m;
             foreach (var r in rows)
             {
@@ -265,7 +265,7 @@ namespace Uxtrata.Controllers
                 r.Balance = running;
             }
 
-            // 6) Render RDLC -> PDF
+            // 6. Render RDLC -> PDF
             var report = new LocalReport
             {
                 ReportPath = Server.MapPath("~/StudentStatement.rdlc") // make sure path/file matches
@@ -273,7 +273,7 @@ namespace Uxtrata.Controllers
             report.DataSources.Clear();
             report.DataSources.Add(new ReportDataSource("StudentStatementDataset", rows)); // dataset name must match RDLC
 
-            // 7) Produce the PDF binary
+            // 7. Produce the PDF binary
             string mimeType, encoding, fileExt;
             Warning[] warnings;
             string[] streamIds;
@@ -285,8 +285,61 @@ namespace Uxtrata.Controllers
 
         }
 
-        // Dispose the context when done
-        protected override void Dispose(bool disposing)
+
+        // ---------- report ----------
+        // GET: /Student/StudentBalance
+        // Builds a global balance statement and render it as a PDF via RDLC
+
+        public async Task<ActionResult> StudentBalanceStatement()
+        {
+            // 1. Look up the Account Receivable (AR) account ID
+            var arId = await db.Accounts
+                .Where(a => a.Code == "AR")
+                .Select(a => a.Id)
+                .FirstOrDefaultAsync();
+
+            // 2. Build rows (Charges/Payments per student)
+            var rows = await db.Students
+                .Select(s => new StudentBalanceVM
+                {
+                    StudentId = s.StudentId,
+                    Name = s.Name,
+
+                    // Sum of all debit entries (charges) for this student in AR account
+                    Charges = db.LedgerEntries
+                        .Where(le => le.StudentId == s.StudentId && le.AccountId == arId && le.Debit > 0)
+                        .Select(le => (decimal?)le.Debit).Sum() ?? 0m,
+
+                    // Sum of all credit entries (payments) for this student in AR account
+                    Payments = db.LedgerEntries
+                        .Where(le => le.StudentId == s.StudentId && le.AccountId == arId && le.Credit > 0)
+                        .Select(le => (decimal?)le.Credit).Sum() ?? 0m
+                })
+                .OrderBy(r => r.Name)
+                .ToListAsync();
+
+            // 3. RDLC
+            var report = new LocalReport
+            {
+                ReportPath = Server.MapPath("~/StudentBalances.rdlc") // make sure path/file matches
+            };
+            report.DataSources.Clear();
+            report.DataSources.Add(new ReportDataSource("StudentBalance", rows)); // dataset name must match RDLC
+
+            // 4. Produce the PDF binary
+            string mimeType, encoding, fileExt;
+            Warning[] warnings;
+            string[] streamIds;
+            var pdf = report.Render(
+                "PDF", null, out mimeType, out encoding, out fileExt, out streamIds, out warnings);
+
+            var balancePdf = report.Render("PDF", null, out mimeType, out encoding, out fileExt, out streamIds, out warnings);
+            return File(balancePdf, "application/pdf", "StudentBalance.pdf");
+        }
+
+
+    // Dispose the context when done
+    protected override void Dispose(bool disposing)
         {
             if (disposing)
             {

@@ -107,19 +107,21 @@ namespace Uxtrata.Controllers
 
 
         // POST: Payment/Create
-        // Create a new payment
+        // Handles creation of a new payment and posting to ledger
+        // Security: [ValidateAntiForgeryToken] protects against CSRF
+        // Security: Limits model binding to whitelisted fields
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<ActionResult> Create([Bind(Include = "PaymentId,StudentId,Amount,PaidAt,Reference")] Payment payment)
         {
             if (payment.PaidAt == default) payment.PaidAt = DateTime.UtcNow;
 
-            // Basic validation
+            // 1. Basic validation: payment must be > 0
             if (payment.Amount <= 0)
             {
                 ModelState.AddModelError("Amount", "Payment must be greater than zero.");
             }
 
-            // For UX, compute balance before payment so we can warn about overpayment
+            // 2. For UX, compute balance before payment so we can warn about overpayment
             decimal? balanceBefore = null;
             if (payment.StudentId > 0)
             {
@@ -133,21 +135,41 @@ namespace Uxtrata.Controllers
                 }
             }
 
-            // If validation fails, reload dropdowns and show form again
+            // 3. If validation fails, reload dropdowns and show form again
             if (!ModelState.IsValid)
             {
                 await PopulateStudentDropDownsAsync(payment.StudentId);
                 return View(payment);
             }
 
-            db.Payments.Add(payment);
-            await db.SaveChangesAsync();
+            //4. Use a db transaction to ensure both payment and ledger posting succeed or fail together
+            using (var tx = db.Database.BeginTransaction())
+            {
+                try
+                {
+                    // Insert the payment record
+                    db.Payments.Add(payment);
+                    await db.SaveChangesAsync();
 
-            // Post to ledger (Debit CASH, Credit AR)
-            await new AccountingService(db).PostPaymentAsync(payment.StudentId, payment.Amount, null);
+                    // Post to Ledger (Debit CASH, Credit AR)
+                    var acct = new AccountingService(db);
+                    await acct.PostPaymentAsync(payment.StudentId, payment.Amount, payment.PaymentId);
 
-            return RedirectToAction("Dashboard", "Student", new { id = payment.StudentId });
+                    tx.Commit();
 
+                    // 5) On success, redirect back to the student's dashboard
+                    return RedirectToAction("Dashboard", "Student", new { id = payment.StudentId });
+                }
+                catch 
+                {
+                    tx.Rollback();
+
+                    // Show error and reload form
+                    ModelState.AddModelError("", "Failed to save payment and post ledger. No changes were saved.");
+                    await PopulateStudentDropDownsAsync(payment.StudentId);
+                    return View(payment);
+                }
+            }
         }
 
 

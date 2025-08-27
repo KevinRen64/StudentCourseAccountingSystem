@@ -11,13 +11,20 @@
     @Html.ActionLink("Add Course", "Create", "CourseSelection", null, new { @class = "btn btn-primary mr-2" })
     <!-- Navigate to payment -->
     @Html.ActionLink("Record Payment", "Create", "Payment", null, new { @class = "btn btn-success mr-2" })
-    <!-- Navigate to download pdf statement -->
+    <!-- Navigate to download student pdf statement -->
     @Html.ActionLink(
-        "Download Statement (PDF)",
+        "Download Student Statement (PDF)",
         "StatementPdf",
         "Student",
         new { id = Model.Student.StudentId },
         new { @class = "btn btn-info" })
+    <!-- Navigate to download global pdf statement -->
+    @Html.ActionLink(
+    "Download Global Statement (PDF)",
+    "StudentBalanceStatement",
+    "Student",
+    null,
+    new { @class = "btn btn-info" })
 </div>
 <!-- Current balance -->
 <p><strong>Current Owing:</strong> @Model.Balance.ToString("C")</p>

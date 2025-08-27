@@ -1,12 +1,69 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\renke\\source\\repos\\Uxtrata\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|c:\\users\\renke\\source\\repos\\uxtrata\\uxtrata\\web.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|solutionrelative:uxtrata\\web.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|C:\\Users\\renke\\source\\repos\\Uxtrata\\uxtrata\\models\\viewmodels\\studentdashboardvm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|solutionrelative:uxtrata\\models\\viewmodels\\studentdashboardvm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|C:\\Users\\renke\\source\\repos\\Uxtrata\\uxtrata\\controllers\\studentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4B62A9D5-274B-4F86-8957-E6BA4B193598}|Uxtrata\\Uxtrata.csproj|solutionrelative:uxtrata\\controllers\\studentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Web.config",
+              "DocumentMoniker": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Web.config",
+              "RelativeDocumentMoniker": "Uxtrata\\Web.config",
+              "ToolTip": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Web.config",
+              "RelativeToolTip": "Uxtrata\\Web.config",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAAAFIAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000601|",
+              "WhenOpened": "2025-08-27T03:43:49.538Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "StudentDashboardVm.cs",
+              "DocumentMoniker": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Models\\ViewModels\\StudentDashboardVm.cs",
+              "RelativeDocumentMoniker": "Uxtrata\\Models\\ViewModels\\StudentDashboardVm.cs",
+              "ToolTip": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Models\\ViewModels\\StudentDashboardVm.cs",
+              "RelativeToolTip": "Uxtrata\\Models\\ViewModels\\StudentDashboardVm.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T03:18:21.874Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "StudentController.cs",
+              "DocumentMoniker": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Controllers\\StudentController.cs",
+              "RelativeDocumentMoniker": "Uxtrata\\Controllers\\StudentController.cs",
+              "ToolTip": "C:\\Users\\renke\\source\\repos\\Uxtrata\\Uxtrata\\Controllers\\StudentController.cs",
+              "RelativeToolTip": "Uxtrata\\Controllers\\StudentController.cs",
+              "ViewState": "AgIAAF4BAAAAAAAAAAAAACQBAABBAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T01:47:14.103Z"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
